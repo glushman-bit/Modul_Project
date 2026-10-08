@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}Контакты — MasterBlast{% endblock %}
+
+{% block content %}
+<section class="hero hero-inner">
+    <div class="container">
+        <div class="hero-label">MasterBlast</div>
+        <h1>Контакты</h1>
+        <p class="hero-subtitle">Оставьте заявку — мы свяжемся с вами в течение рабочего дня</p>
+    </div>
+</section>
+
+<section class="container section">
+    <div class="contact-layout">
+        <div class="contact-info">
+            <div class="card">
+                <h3>Наши контакты</h3>
+                <div id="contactDetails"><p class="muted">Загрузка...</p></div>
+            </div>
+        </div>
+
+        <div class="card order-form-card js-add-order-only">
+            <h2>Заявка на расчёт</h2>
+            <p class="muted">Расскажите о задаче — пришлём предварительный расчёт и сроки</p>
+
+            <form id="orderForm">
+                <div class="form-group">
+                    <label for="orderName">Ваше имя</label>
+                    <input class="form-input" id="orderName" name="name" required maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="orderPhone">Телефон</label>
+                    <input class="form-input js-phone" id="orderPhone" name="phone" type="tel" required maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label for="orderEmail">Email (необязательно)</label>
+                    <input class="form-input" id="orderEmail" name="email" type="email" maxlength="254">
+                </div>
+                <div class="form-group">
+                    <label for="orderService">Услуга</label>
+                    <select class="form-input contact-select" id="orderService" name="service">
+                        <option value="">— Выберите услугу —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="orderMessage">Описание задачи</label>
+                    <textarea class="form-input" id="orderMessage" name="message" required></textarea>
+                </div>
+                <div class="form-error hidden js-error"></div>
+                <button type="submit" class="btn btn-primary btn-block">Отправить заявку</button>
+            </form>
+            <div class="order-success hidden">
+                <p class="order-success-text">Ваша заявка принята в работу</p>
+                <button type="button" class="btn btn-primary js-order-ok">ОК</button>
+            </div>
+        </div>
+
+        <div class="card order-form-card js-order-blocked hidden">
+            <h2>Заявка на расчёт</h2>
+            <p class="muted">Расскажите о задаче — пришлём предварительный расчёт и сроки</p>
+            <div class="order-blocked-note">
+                <p>Для оставления заявки на расчёт необходимо <strong>авторизоваться</strong>.</p>
+                <div class="hero-actions">
+                    <a href="#" class="btn btn-primary js-open-login">Войти</a>
+                    <a href="#" class="btn btn-ghost js-open-register">Регистрация</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(async function() {
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    try {
+        const c = await API.get('/contacts/');
+        let ch = '';
+        if (c.phone) ch += '<span class="contact-label">📞 Телефон:</span><span class="contact-value"><a href="tel:' + esc(c.phone) + '">' + esc(c.phone) + '</a></span>';
+        if (c.email) ch += '<span class="contact-label">✉️ Email:</span><span class="contact-value"><a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a></span>';
+        if (c.address) ch += '<span class="contact-label">📍 Адрес:</span><span class="contact-value">' + esc(c.address) + '</span>';
+        if (c.work_hours) ch += '<span class="contact-label">🕘 Режим работы:</span><span class="contact-value">' + esc(c.work_hours) + '</span>';
+        if (!ch) ch = '<p class="muted">Контакты скоро появятся.</p>';
+        $('#contactDetails').html(ch);
+    } catch (e) {}
+
+    try {
+        const data = await API.get('/services/');
+        const list = data.results || data;
+        list.forEach(s => {
+            $('#orderService').append(`<option value="${s.id}">${s.title}</option>`);
+        });
+    } catch (e) {}
+
+    $('#orderForm').on('submit', async function(e) {
+        e.preventDefault();
+        const $form = $(this);
+        const $btn = $form.find('button[type=submit]');
+        const $err = $form.find('.js-error');
+        $err.text('').addClass('hidden');
+        $btn.prop('disabled', true).text('Отправка...');
+
+        const data = Object.fromEntries(new FormData(this));
+        if (!data.service) data.service = null;
+
+        try {
+            await API.post('/orders/', data);
+            $form.addClass('hidden').trigger('reset');
+            $form.closest('.order-form-card').find('.order-success').removeClass('hidden');
+        } catch (err) {
+            $err.text(extractError(err)).removeClass('hidden');
+        } finally {
+            $btn.prop('disabled', false).text('Отправить заявку');
+        }
+    });
+
+    function extractError(err) {
+        if (err.data) {
+            for (const key in err.data) {
+                const val = err.data[key];
+                if (Array.isArray(val)) return val[0];
+                if (typeof val === 'string') return val;
+            }
+        }
+        return err.message || 'Не удалось отправить заявку';
+    }
+});
+</script>
+{% endblock %}

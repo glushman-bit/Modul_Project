@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Типы работ — MasterBlast{% endblock %}
+
+{% block content %}
+<section class="hero hero-inner">
+    <div class="container">
+        <div class="hero-label">MasterBlast</div>
+        <h1>Типы работ</h1>
+        <p class="hero-subtitle">Пескоструйная обработка, порошковая покраска и сварочные работы под ключ</p>
+    </div>
+</section>
+
+<section class="container section">
+    <div id="servicesList" class="services-list">
+        <div class="service-row skeleton-row"></div>
+        <div class="service-row skeleton-row"></div>
+        <div class="service-row skeleton-row"></div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(async function() {
+    try {
+        const data = await API.get('/services/');
+        const list = data.results || data;
+        const $list = $('#servicesList').empty();
+        if (!list.length) {
+            $list.html('<p class="muted">Услуги скоро появятся.</p>');
+            return;
+        }
+        list.forEach((s, i) => {
+            $list.append(`
+                <div class="service-row">
+                    <div class="service-num">${String(i + 1).padStart(2, '0')}</div>
+                    <div class="service-body">
+                        <div class="service-name">${s.title}</div>
+                        <div class="service-desc">${nlToP(s.description)}</div>
+                    </div>
+                    <div class="service-price">от <strong>${s.price_from} ₽</strong> ${s.price_unit}</div>
+                </div>
+            `);
+        });
+    } catch (e) {
+        $('#servicesList').html('<p class="muted">Не удалось загрузить услуги.</p>');
+    }
+});
+</script>
+{% endblock %}
